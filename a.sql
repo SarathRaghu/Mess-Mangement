@@ -97,7 +97,7 @@ begin
     into InmateAtt
     from Inmates
     where AdmnNo = $2;
-
+    
     select sum(Attendence)
     into TotalAtt
     from Inmates;
@@ -149,3 +149,59 @@ insert into workers (name, salary) values('Kumar', 20000);
 -- 2 * 20
 --
 
+create table attendence (
+    AdmnNo varchar(10),
+    month int,
+    year int,
+    att int,
+    PRIMARY KEY(AdmnNo, month, year),
+    FOREIGN KEY(AdmnNo) REFERENCES Inmates(AdmnNo)
+);
+
+
+
+
+create or replace function calc(int, int, varchar) returns float as $$
+declare
+    TotalCost int;
+    SalaryCost int;
+    InmateCount int;
+    InmateAtt int;
+    TotalAtt int;
+    x float;
+begin
+
+    select sum(y.Pcost) into TotalCost
+    from(
+        select t.TQ * Products.Price as PCost
+        from (
+            select sum(Outgoing.Quantity) as TQ, PId
+            from Outgoing
+            where extract('month' from Outgoing.OutDate) = $1
+            group by PId) t
+        natural join Products
+    ) y;
+
+    select sum(Salary)
+    into SalaryCost
+    from Workers;
+
+    select count(*)
+    into InmateCount
+    from Inmates;
+
+    select att
+    into InmateAtt
+    from Attendence
+    where AdmnNo = $3 and month = $1 and year = $2;
+
+    select sum(att)
+    into TotalAtt
+    from Attendence
+    where month = $1 and year = $2;
+
+    x := ((TotalCost + SalaryCost) / TotalAtt) *InmateAtt;
+    raise notice 'x: %, tc: %, sc: %, ta: %, ia: %', x, TotalCost, SalaryCost, TotalAtt, InmateAtt;
+    return x;
+end
+$$ language plpgsql;
